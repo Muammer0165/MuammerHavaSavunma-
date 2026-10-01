@@ -18,7 +18,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       padding: 20px;
     }
     .card {
@@ -27,10 +26,12 @@
       border-radius: 20px;
       padding: 30px;
       width: 100%;
-      max-width: 380px;
+      max-width: 400px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
       text-align: center;
       border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 20px;
+      margin-top: 10px;
     }
     .header {
       font-size: 1.2rem;
@@ -40,7 +41,7 @@
       letter-spacing: 1px;
     }
     .location {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       font-weight: 700;
       margin-bottom: 20px;
     }
@@ -81,19 +82,79 @@
       margin-top: 20px;
       cursor: pointer;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
     }
     button:active {
-      transform: scale(0.98);
+      transform: scale(0.95);
     }
+    
+    /* Saatlik Tahmin Alanı Stilleri */
+    .hourly-forecast {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .hourly-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #ffd700;
+      text-align: left;
+    }
+    .hourly-container {
+      display: flex;
+      overflow-x: auto;
+      gap: 15px;
+      padding-bottom: 10px;
+      /* Scrollbarı gizlemek için */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+    .hourly-container::-webkit-scrollbar {
+      height: 6px;
+    }
+    .hourly-container::-webkit-scrollbar-thumb {
+      background-color: rgba(255,255,255,0.3);
+      border-radius: 10px;
+    }
+    .hour-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 12px;
+    }
+    .hour-time {
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .hour-icon {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+    .hour-temp {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    
     .footer {
       margin-top: 20px;
       font-size: 0.8rem;
       opacity: 0.7;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
 
+  <!-- Ana Hava Durumu Kartı -->
   <div class="card">
     <div class="header">MUAMMER WEATHER</div>
     <div class="location" id="city">Konum Alınıyor...</div>
@@ -102,96 +163,151 @@
 
     <div class="details">
       <div class="detail-item">
-        Rüzgar Hızı
+        Rüzgar
         <span id="wind">-- km/s</span>
       </div>
       <div class="detail-item">
-        Nem Oranı
+        Nem
         <span id="humidity">-- %</span>
       </div>
     </div>
 
-    <button onclick="getWeather()">Konumu Yenile</button>
+    <button onclick="getWeather()">Yenile</button>
+  </div>
+
+  <!-- Saatlik Hava Tahmini Kartı -->
+  <div class="hourly-forecast">
+    <div class="hourly-title">Önümüzdeki Saatler</div>
+    <div class="hourly-container" id="hourly-container">
+      <!-- JavaScript ile buraya saatlik veriler eklenecek -->
+      Yükleniyor...
+    </div>
   </div>
 
   <div class="footer">Kişisel Canlı Hava Durumu Paneli</div>
 
   <script>
+    // Sadece emoji gösteren ikon haritası (saatlik tahmin için)
+    const weatherIcons = {
+      0: "☀️️", 1: "🌤️", 2: "⛅", 3: "☁", 
+      45: "🌫️", 48: "🌫️", 51: "🌧", 61: "🌧️", 
+      63: "🌧️", 65: "🌧️", 71: "❄️", 73: "❄️", 
+      80: "🌦️", 95: "🌩️"
+    };
+
+    // Metin ve emoji haritası (ana kart için)
     const weatherCodes = {
-      0: "Açık / Güneşli ☀️",
-      1: "Çoğunlukla Açık 🌤️",
-      2: "Parçalı Bulutlu ⛅",
-      3: "Kapalı / Bulutlu ☁️️",
-      45: "Sisli 🌫️",
-      48: "Yoğun Sis 🌫️",
-      51: "Hafif Çiseleyen Yağmur 🌧",
-      61: "Yağmurlu 🌧️",
-      63: "Orta Şiddetli Yağmur 🌧️",
-      65: "Şiddetli Yağmur 🌧️",
-      71: "Hafif Kar Yağışlı ❄️",
-      73: "Kar Yağışlı ❄️",
-      80: "Sağanak Yağmurlu 🌦️",
-      95: "Gökgürültülü Fırtına 🌩️"
+      0: "Açık / Güneşli ☀️", 1: "Çoğunlukla Açık 🌤️", 2: "Parçalı Bulutlu ⛅", 3: "Kapalı / Bulutlu ☁", 
+      45: "Sisli 🌫️", 48: "Yoğun Sis 🌫️", 51: "Hafif Çiseleyen 🌧", 61: "Yağmurlu 🌧️", 
+      63: "Orta Yağmur 🌧️", 65: "Şiddetli Yağmur 🌧️", 71: "Hafif Kar ❄️", 73: "Kar Yağışlı ❄️", 
+      80: "Sağanak Yağmur 🌦️", 95: "Gökgürültülü 🌩️"
     };
 
     function getWeather() {
       document.getElementById('city').innerText = "Konum Alınıyor...";
+      document.getElementById('hourly-container').innerHTML = "Yükleniyor...";
       
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
-
-          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`)
-            .then(res => res.json())
-            .then(data => {
-              const current = data.current_weather;
-              document.getElementById('temp').innerText = `${Math.round(current.temperature)}°C`;
-              document.getElementById('wind').innerText = `${current.windspeed} km/s`;
-              document.getElementById('status').innerText = weatherCodes[current.weathercode] || "Açık";
-              
-              if(data.hourly && data.hourly.relativehumidity_2m) {
-                document.getElementById('humidity').innerText = `%${data.hourly.relativehumidity_2m[0]}`;
-              }
-
-              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-                .then(res => res.json())
-                .then(geoData => {
-                  const city = geoData.address.province || geoData.address.city || geoData.address.town || "Bulunduğunuz Konum";
-                  const district = geoData.address.suburb || geoData.address.district || "";
-                  document.getElementById('city').innerText = district ? `${city}, ${district}` : city;
-                })
-                .catch(() => {
-                  document.getElementById('city').innerText = "Mevcut Konum";
-                });
-            })
-            .catch(() => {
-              alert("Hava durumu verisi alınamadı!");
-            });
+          fetchWeatherData(lat, lon);
+          getCityName(lat, lon);
         }, () => {
-          alert("Konum izni verilmedi. Varsayılan konum gösteriliyor.");
-          fetchWeatherByCoords(37.0, 35.32, "Adana");
+          alert("Konum izni verilmedi. Adana gösteriliyor.");
+          fetchWeatherData(37.0, 35.32);
+          document.getElementById('city').innerText = "Adana";
         });
       } else {
         alert("Cihazınız konum özelliğini desteklemiyor.");
       }
     }
 
-    function fetchWeatherByCoords(lat, lon, cityName) {
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`)
+    function fetchWeatherData(lat, lon) {
+      // API'den hem mevcut durumu hem de 24 saatlik veriyi çekiyoruz
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode,relativehumidity_2m&timezone=auto`;
+      
+      fetch(url)
         .then(res => res.json())
         .then(data => {
+          // 1. ANA KART GÜNCELLEMESİ
           const current = data.current_weather;
-          document.getElementById('city').innerText = cityName;
           document.getElementById('temp').innerText = `${Math.round(current.temperature)}°C`;
           document.getElementById('wind').innerText = `${current.windspeed} km/s`;
           document.getElementById('status').innerText = weatherCodes[current.weathercode] || "Açık";
+          
           if(data.hourly && data.hourly.relativehumidity_2m) {
-            document.getElementById('humidity').innerText = `%${data.hourly.relativehumidity_2m[0]}`;
+             // Geçerli saate en yakın nem oranını al
+             const currentTimeStr = current.time;
+             const index = data.hourly.time.findIndex(t => t === currentTimeStr);
+             const humidity = index !== -1 ? data.hourly.relativehumidity_2m[index] : data.hourly.relativehumidity_2m[0];
+             document.getElementById('humidity').innerText = `%${humidity}`;
           }
+
+          // 2. SAATLİK TAHMİN GÜNCELLEMESİ
+          const hourlyContainer = document.getElementById('hourly-container');
+          hourlyContainer.innerHTML = ''; // İçeriği temizle
+          
+          const times = data.hourly.time;
+          const temps = data.hourly.temperature_2m;
+          const codes = data.hourly.weathercode;
+          
+          // Şu anki saati bulalım
+          const now = new Date();
+          let currentHourIndex = times.findIndex(timeStr => {
+            const apiDate = new Date(timeStr);
+            return apiDate.getHours() === now.getHours() && apiDate.getDate() === now.getDate();
+          });
+
+          // Eğer tam saat bulunamazsa 0'dan başla
+          if(currentHourIndex === -1) currentHourIndex = 0;
+
+          // Önümüzdeki 24 saati döngü ile ekrana basalım
+          for(let i = currentHourIndex; i < currentHourIndex + 24; i++) {
+            if(i >= times.length) break; // Veri sınırını aşmamak için
+            
+            const timeDate = new Date(times[i]);
+            const hourString = timeDate.getHours().toString().padStart(2, '0') + ":00";
+            const tempVal = Math.round(temps[i]);
+            const icon = weatherIcons[codes[i]] || "☀️";
+
+            // HTML öğesini oluştur
+            const hourItem = document.createElement('div');
+            hourItem.className = 'hour-item';
+            
+            // Eğer saat "şu an" ise "Şimdi" yazsın
+            const displayTime = (i === currentHourIndex) ? "Şimdi" : hourString;
+
+            hourItem.innerHTML = `
+              <div class="hour-time">${displayTime}</div>
+              <div class="hour-icon">${icon}</div>
+              <div class="hour-temp">${tempVal}°</div>
+            `;
+            
+            hourlyContainer.appendChild(hourItem);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Hava durumu verisi alınırken hata oluştu!");
+          document.getElementById('hourly-container').innerHTML = "Veri yüklenemedi.";
         });
     }
 
+    function getCityName(lat, lon) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+        .then(res => res.json())
+        .then(geoData => {
+          const city = geoData.address.province || geoData.address.city || geoData.address.town || "Bulunduğunuz Konum";
+          const district = geoData.address.suburb || geoData.address.district || "";
+          document.getElementById('city').innerText = district ? `${city}, ${district}` : city;
+        })
+        .catch(() => {
+          document.getElementById('city').innerText = "Mevcut Konum";
+        });
+    }
+
+    // Sayfa yüklendiğinde çalıştır
     window.onload = getWeather;
   </script>
 </body>
